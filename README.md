@@ -7,11 +7,12 @@ A Graph API wrapper written in Coffeescript (uses the Javascript SDK)
 
 # Install Coffeescript if you don't have it `sudo npm install coffee-script`.
 # Change to the FB-Graph-API-Wrapper directory.
-# `coffee -o build/ -cwb src/`
+# `coffee -o build/ -cb src/`
+# Note: It is important to combile with the `--bare` option 
 
 == Usage ==
 
-Your HTML should have the requisite `fb-root` div with an extra attribute, `fb-app-id` whose value is your app id. See the example for reference.
+Your HTML should have the requisite `fb-root` div with an extra attribute, `data-app-id` whose value is your app id. See the example for reference.
 
 Initialize the Facebook SDK
 
