@@ -5,15 +5,18 @@ Graph =
     appId: $("#fb-root").attr("data-app-id")
     status: true
     cookie: true
-    xfbml: true
+    xfbml: false
+    oauth: true
+    channelUrl: $("#fb-root").attr("data-channel-file")
 
   callstack: []
+  client: {}
   getPermissions: ->
     (if (not @permissions) then {} else scope: @permissions)
 
-  setMessage: (message, type) ->
+  setMessage: (message) ->
     alerts = $("#alerts")
-    alerts.append "<div class=\"alert alert-" + type + "\"><button type=\"button\" class=\"close\" data-dismiss=\"alert\">&times;</button>" + message + "</div>"
+    alerts.append "<div class=\"alert alert-info\"><button type=\"button\" class=\"close\" data-dismiss=\"alert\">&times;</button>" + message + "</div>"
 
   init: (permissions) ->
     @permissions = permissions
@@ -28,22 +31,29 @@ Graph =
       d.getElementsByTagName("head")[0].appendChild js
     ) document
     window.fbAsyncInit = ->
-      Graph.initialized = true
-      FB.init _this.opts
-      Graph.login()
+      @.initialized = true
+      FB.init @opts
+      FB.getLoginStatus (response) ->
+        if response.status is "connected"
+          @token = response.authResponse.accessToken
+          @executeCallstack()
+        else
+          @login()
+
+  executeCallstack: ->
+    i = Graph.callstack.length - 1
+    while i >= 0
+      Graph.callstack[i]()  if typeof Graph.callstack[i] is "function"
+      i--
 
   login: ->
     FB.login ((response) ->
       if response.authResponse
         @token = response.authResponse.accessToken
         $.publish "fb.login", [ response.authResponse.accessToken, response ]
-        i = Graph.callstack.length - 1
-
-        while i >= 0
-          Graph.callstack[i]()  if typeof Graph.callstack[i] is "function"
-          i--
+        Graph.executeCallstack()
       else
-        console.error "failed to login to facebook"
+        @setMessage "You are not logged in to Facebook!"
     ), @getPermissions()
 
   run: (fn) ->
@@ -69,6 +79,18 @@ Graph =
               perms: response.data[i].perms
             i--
           $.publish "fb.fetch.pages", [ pages ]
+
+    page: (pid) ->
+      Graph.run ->
+        FB.api "/" + pid, (response) ->
+          page =
+            id: response.id
+            about: response.about
+            title: response.name
+            published: response.is_published
+            likes: response.likes
+
+          $.publish "fb.fetch.page", [ page ]
 
     albums: ->
       Graph.run ->
@@ -124,7 +146,7 @@ Graph =
       Graph.run ->
         FB.api "/links", "post", link, (response) ->
           if not response or response.error
-            @setMessage "There has been a problem. Please try your post again."
+            _this.setMessage "There has been a problem. Please try your post again."
           else
             $.publish "fb.create.link", [ response.id, response ]
 
